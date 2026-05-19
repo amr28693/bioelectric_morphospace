@@ -1,0 +1,8 @@
+# morphospace-demo requirements
+# Core (required)
+numpy>=1.17
+scipy>=1.4
+matplotlib>=3.2
+
+# Optional: only needed for --with-api (Allen Brain Atlas demo)
+requests>=2.20
