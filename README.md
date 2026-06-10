@@ -4,7 +4,7 @@ Code accompanying:
 
 > **An Operational Bioelectric Morphospace with Fisher--Rao Geometric Structure**
 > Anderson M. Rodriguez (2026)
-> *Journal of Theoretical Biology* (submitted)
+> *BioSystems* (submitted)
 
 ## SCRIPT OPERATION
 
