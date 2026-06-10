@@ -130,7 +130,7 @@ MIT
 @article{rodriguez2026morphospace,
   title={An Operational Bioelectric Morphospace with Fisher--Rao Geometric Structure},
   author={Rodriguez, Anderson M.},
-  journal={Journal of Theoretical Biology},
+  journal={BioSystems},
   year={2026},
   note={Submitted}
 }
