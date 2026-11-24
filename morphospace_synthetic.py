@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
-Synthetic Demonstration of Information-Geometric Bioelectric Morphospace
+Synthetic Demonstration of Information-Geometric Bioelectric State Space
 ========================================================================
 
-Accompanies: "An Operational Bioelectric Morphospace with Fisher--Rao
+Accompanies: "An Operational Bioelectric State Space with Fisher--Rao
 Geometric Structure" (Rodriguez, 2026)
 
 This script:
   1. Simulates a 2D tissue with FitzHugh-Nagumo bioelectric dynamics
      under six perturbation conditions spanning excitable, oscillatory,
-     and bistable regimes.
+     and high-drive regimes.
   2. Generates replicate voltage recordings with stochastic noise.
-  3. Extracts four morphospace coordinates (V0, A_dV, T, C_eff).
+  3. Extracts four state-space coordinates (V0, A_dV, T, C_eff).
   4. Computes the empirical Fisher-Rao metric from replicates.
   5. Generates publication-quality figures (PDF + PNG).
   6. Optionally fetches Allen Brain Atlas electrophysiology data
-     to demonstrate pipeline generality on real recordings.
+     to demonstrate framework generality on real recordings.
 
 Requirements:
     pip install numpy scipy matplotlib requests
@@ -41,6 +41,7 @@ import json
 import sys
 import warnings
 warnings.filterwarnings('ignore')
+
 
 # ══════════════════════════════
 # ── Output directory ───────────────────
@@ -122,7 +123,7 @@ class BioelectricTissue:
         self.w += dt * dw
 
     def simulate(self, dt=0.02, T_warmup=25.0, T_record=40.0,
-                 n_snapshots=200):
+                 n_snapshots=600):
         """
         Run simulation, return (times, V_record).
         """
@@ -145,13 +146,13 @@ class BioelectricTissue:
 
 # ══════════════════════════════
 # ══════════════════════════════
-#  2.  MORPHOSPACE COORDINATE EXTRACTION
+#  2.  STATE-SPACE COORDINATE EXTRACTION
 # ══════════════════════════════
 # ══════════════════════════════
 
 def extract_coordinates(times, V_record):
     """
-    Extract four morphospace coordinates from voltage recording.
+    Extract four state-space coordinates from voltage recording.
     """
     T_steps, N, _ = V_record.shape
     dt = np.mean(np.diff(times)) if len(times) > 1 else 0.02
@@ -221,16 +222,16 @@ CONDITIONS = [
     {'label': 'Oscillatory\nstrong coupling', 'short': 'Osc-SC',
      'C': 1.20, 'I_ext': 0.50, 'epsilon': 0.08, 'a': 0.7, 'b': 0.8,
      'color': '#b2182b', 'marker': 'D'},
-    {'label': 'Bistable\nweak coupling',      'short': 'Bi-WC',
+    {'label': 'High-drive\nweak coupling',    'short': 'HD-WC',
      'C': 0.08, 'I_ext': 0.80, 'epsilon': 0.12, 'a': 0.5, 'b': 0.8,
      'color': '#1b7837', 'marker': 'v'},
-    {'label': 'Bistable\nstrong coupling',    'short': 'Bi-SC',
+    {'label': 'High-drive\nstrong coupling',  'short': 'HD-SC',
      'C': 1.20, 'I_ext': 0.80, 'epsilon': 0.12, 'a': 0.5, 'b': 0.8,
      'color': '#762a83', 'marker': 'P'},
 ]
 
 
-def run_perturbation_library(n_replicates=15, seed_base=42):
+def run_perturbation_library(n_replicates=100, seed_base=42):
     """Simulate all conditions with stochastic replicates."""
     all_coords = []
     all_recordings = []
@@ -239,14 +240,14 @@ def run_perturbation_library(n_replicates=15, seed_base=42):
         cond_coords, cond_recs = [], []
         for rep in range(n_replicates):
             seed = seed_base + ci * 1000 + rep
-            sigma = 0.06 + 0.04 * np.sin(rep * 1.1)
+            sigma = 0.05
             tissue = BioelectricTissue(
                 N=32, C=cond['C'], I_ext=cond['I_ext'],
                 epsilon=cond['epsilon'], a=cond['a'], b=cond['b'],
                 noise_sigma=sigma, seed=seed,
             )
             times, V_rec = tissue.simulate(
-                dt=0.02, T_warmup=25.0, T_record=40.0, n_snapshots=200,
+                dt=0.02, T_warmup=100.0, T_record=120.0, n_snapshots=600,
             )
             coords = extract_coordinates(times, V_rec)
             cond_coords.append(coords)
@@ -315,11 +316,11 @@ def fig1_voltage_fields(conds, all_recs):
     cb.set_label('Membrane voltage (a.u.)', fontsize=9)
     fig.suptitle('Voltage-field snapshots across perturbation conditions',
                  fontsize=10, y=0.98)
-    save(fig, 'fig1_voltage_fields')
-    print("    Fig 1 ✓")
+    save(fig, 'fig2_voltage_fields')
+    print("    Fig 2 ✓")
 
 # ══════════════════════════════
-# ── Figure 2: Morphospace 2D projections ─────────
+# ── Figure 2: State-space 2D projections ─────────
 # ══════════════════════════════
 
 def fig2_morphospace(conds, all_coords):
@@ -341,12 +342,12 @@ def fig2_morphospace(conds, all_coords):
         ax.grid(True, alpha=0.15)
     fig.legend(loc='upper center', ncol=6, fontsize=7, framealpha=0.9,
               bbox_to_anchor=(0.5, 1.02))
-    fig.suptitle('Morphospace coordinate projections '
+    fig.suptitle('State-space coordinate projections '
                  '(large markers = condition means)',
                  fontsize=10, y=1.06)
     fig.tight_layout()
-    save(fig, 'fig2_morphospace')
-    print("    Fig 2 ✓")
+    save(fig, 'fig4_morphospace')
+    print("    Fig 4 ✓")
 
 # ══════════════════════════════
 # ── Figure 3: Fisher-Rao metric ──────────────
@@ -419,8 +420,8 @@ def fig3_fisher_rao(conds, all_coords):
 
     fig.suptitle('Empirical Fisher–Rao metric (correlation structure)',
                  fontsize=10, y=1.01)
-    save(fig, 'fig3_fisher_rao')
-    print("    Fig 3 ✓")
+    save(fig, 'fig5_fisher_rao')
+    print("    Fig 5 ✓")
     return all_g, np.array(all_mu), g_pool
 
 
@@ -447,11 +448,146 @@ def fig5_summary(conds, all_coords):
                           rotation=45, ha='right', fontsize=6)
         ax.set_title(LABELS[ki], fontsize=10, fontweight='bold')
         ax.grid(axis='y', alpha=0.15)
-    fig.suptitle('Morphospace coordinates by perturbation condition (mean ± SD)',
+    fig.suptitle('State-space coordinates by perturbation condition (mean ± SD)',
                  fontsize=10, y=1.05)
     fig.tight_layout()
     save(fig, 'figsupp-bar_summary')
     print("    Fig supp-bar ✓")
+
+
+# ══════════════════════════════
+# ── Supplementary: Phase portraits ─────────────
+# ══════════════════════════════
+
+def fig_supp_phase_portraits():
+    """Single-cell phase portraits for each of the three unique parameter
+    sets (WC/SC pairs share single-cell dynamics; only coupling C differs).
+    No coupling, no noise — pure ODE dynamics."""
+    REGIMES = [
+        {'name': 'Excitable',  'a': 0.7, 'b': 0.8, 'I_ext': 0.20,
+         'eps': 0.04, 'color': '#2166ac'},
+        {'name': 'Oscillatory', 'a': 0.7, 'b': 0.8, 'I_ext': 0.50,
+         'eps': 0.08, 'color': '#ef8a62'},
+        {'name': 'High-drive', 'a': 0.5, 'b': 0.8, 'I_ext': 0.80,
+         'eps': 0.12, 'color': '#1b7837'},
+    ]
+
+    def fhn_rhs(V, w, a, b, I_ext, eps):
+        dV = V - V**3 / 3 - w + I_ext
+        dw = eps * (V + a - b * w)
+        return dV, dw
+
+    fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.5))
+
+    for ri, reg in enumerate(REGIMES):
+        ax = axes[ri]
+        a, b, I_ext, eps = reg['a'], reg['b'], reg['I_ext'], reg['eps']
+
+        # Nullclines
+        V_range = np.linspace(-2.5, 2.5, 500)
+        w_v_null = V_range - V_range**3 / 3 + I_ext
+        w_w_null = (V_range + a) / b
+        ax.plot(V_range, w_v_null, 'k-', linewidth=1.2, label='V-nullcline')
+        ax.plot(V_range, w_w_null, 'k--', linewidth=1.2, label='w-nullcline')
+
+        # Fixed point
+        coeffs = [1.0, 0.0, -3.0 * (1.0 - 1.0 / b),
+                  -3.0 * (I_ext - a / b)]
+        roots = np.roots(coeffs)
+        real_roots = roots[np.abs(roots.imag) < 1e-10].real
+        V_star = real_roots[0]
+        w_star = (V_star + a) / b
+
+        # Jacobian and eigenvalues
+        J = np.array([[1 - V_star**2, -1.0],
+                      [eps, -eps * b]])
+        eigvals, eigvecs = np.linalg.eig(J)
+
+        # Classify
+        re_parts = eigvals.real
+        im_parts = eigvals.imag
+        if np.all(re_parts < 0):
+            cls = 'stable spiral' if np.any(np.abs(im_parts) > 1e-10) \
+                else 'stable node'
+            fp_marker = 'o'
+        elif np.all(re_parts > 0):
+            cls = 'unstable spiral' if np.any(np.abs(im_parts) > 1e-10) \
+                else 'unstable node'
+            fp_marker = 'x'
+        else:
+            cls = 'saddle'
+            fp_marker = 's'
+
+        ax.plot(V_star, w_star, fp_marker, color=reg['color'],
+                markersize=10, markeredgewidth=2, zorder=10)
+
+        # Eigenvectors — draw only if eigenvalues are real
+        if np.all(np.abs(im_parts) < 1e-10):
+            for ei in range(2):
+                ev = eigvecs[:, ei].real
+                ev = ev / np.linalg.norm(ev) * 0.4
+                ax.annotate('', xy=(V_star + ev[0], w_star + ev[1]),
+                            xytext=(V_star, w_star),
+                            arrowprops=dict(arrowstyle='->',
+                                            color=reg['color'], lw=1.5))
+                ax.annotate('', xy=(V_star - ev[0], w_star - ev[1]),
+                            xytext=(V_star, w_star),
+                            arrowprops=dict(arrowstyle='->',
+                                            color=reg['color'], lw=1.5))
+
+        # Trajectories from random ICs
+        rng = np.random.default_rng(42)
+        ics = rng.uniform(low=[-2.0, -1.0], high=[2.0, 2.0], size=(8, 2))
+        dt_traj = 0.02
+        n_steps = int(200.0 / dt_traj)
+        for ic in ics:
+            V_t, w_t = ic[0], ic[1]
+            Vs, ws = [V_t], [w_t]
+            for _ in range(n_steps):
+                dV, dw = fhn_rhs(V_t, w_t, a, b, I_ext, eps)
+                V_t += dt_traj * dV
+                w_t += dt_traj * dw
+                if abs(V_t) > 4 or abs(w_t) > 4:
+                    break
+                Vs.append(V_t)
+                ws.append(w_t)
+            ax.plot(Vs, ws, color=reg['color'], alpha=0.3, linewidth=0.6)
+
+        ax.set_xlim(-2.5, 2.5)
+        ax.set_ylim(-1.5, 2.5)
+        ax.set_xlabel(r'$V$')
+        ax.set_ylabel(r'$w$')
+        ax.set_title(f"{reg['name']} ({cls})", fontsize=9)
+        ax.grid(True, alpha=0.15)
+        if ri == 0:
+            ax.legend(fontsize=7, loc='upper right')
+
+    fig.tight_layout()
+    save(fig, 'fig1_phase_portraits')
+    print("    Fig 1 ✓")
+
+
+# ══════════════════════════════
+# ── Supplementary: Time series ─────────────────
+# ══════════════════════════════
+
+def fig_supp_time_series(conds, all_recs):
+    """Spatial-mean V(t) for each condition (first replicate)."""
+    fig, axes = plt.subplots(2, 3, figsize=(9.0, 4.5))
+    for ci, ax in enumerate(axes.flat):
+        times, V_rec = all_recs[ci][0]  # first replicate
+        V_mean = V_rec.mean(axis=(1, 2))  # spatial mean per snapshot
+        ax.plot(times, V_mean, color=conds[ci]['color'], linewidth=0.8)
+        ax.set_title(conds[ci]['short'], fontsize=9, fontweight='bold',
+                     color=conds[ci]['color'])
+        ax.set_xlabel('Time (a.u.)', fontsize=7)
+        ax.set_ylabel(r'$\bar{V}(t)$', fontsize=7)
+        ax.grid(True, alpha=0.15)
+    fig.suptitle('Spatial-mean voltage time series (representative replicate)',
+                 fontsize=10, y=1.02)
+    fig.tight_layout()
+    save(fig, 'fig3_time_series')
+    print("    Fig 3 ✓")
 
 
 # ══════════════════════════════
@@ -460,21 +596,36 @@ def fig5_summary(conds, all_coords):
 # ══════════════════════════════
 # ══════════════════════════════
 
-def print_and_save_summary(conds, all_coords, g_pool):
+def bootstrap_covariance_ci(X, n_boot=1000, ci=95, seed=42):
+    """Bootstrap 95% CIs on each entry of the covariance matrix.
+    Returns lower and upper bound matrices."""
+    rng = np.random.default_rng(seed)
+    n = X.shape[0]
+    boot_covs = np.zeros((n_boot, 4, 4))
+    for b in range(n_boot):
+        idx = rng.integers(0, n, size=n)
+        boot_covs[b] = np.cov(X[idx].T, ddof=1)
+    alpha = (100 - ci) / 2
+    lo = np.percentile(boot_covs, alpha, axis=0)
+    hi = np.percentile(boot_covs, 100 - alpha, axis=0)
+    return lo, hi
+
+
+def print_and_save_summary(conds, all_coords, all_recs, g_pool):
     print("\n" + "=" * 80)
-    print("  MORPHOSPACE COORDINATE SUMMARY")
+    print("  STATE-SPACE COORDINATE SUMMARY")
     print("=" * 80)
-    print(f"  {'Condition':<12} {'V0':>9} {'A_dV':>9} {'T':>9} {'C_eff':>9}")
-    print("  " + "-" * 50)
+    print(f"  {'Condition':<12} {'V0':>13} {'A_dV':>13} {'T':>13} {'C_eff':>13}")
+    print("  " + "-" * 66)
 
     summary = {}
     for ci, cond in enumerate(conds):
         X = coords_to_array(all_coords[ci])
         m, s = X.mean(0), X.std(0)
         print(f"  {cond['short']:<12} "
-              f"{m[0]:>8.4f}  {m[1]:>8.4f}  {m[2]:>8.4f}  {m[3]:>8.4f}")
+              f"{m[0]:>11.6f}  {m[1]:>11.6f}  {m[2]:>11.6f}  {m[3]:>11.6f}")
         print(f"  {'  ± SD':<12} "
-              f"{s[0]:>8.4f}  {s[1]:>8.4f}  {s[2]:>8.4f}  {s[3]:>8.4f}")
+              f"{s[0]:>11.6f}  {s[1]:>11.6f}  {s[2]:>11.6f}  {s[3]:>11.6f}")
         summary[cond['short']] = {
             'mean': {k: round(float(m[i]), 6) for i, k in enumerate(KEYS)},
             'std':  {k: round(float(s[i]), 6) for i, k in enumerate(KEYS)},
@@ -510,7 +661,7 @@ def print_and_save_summary(conds, all_coords, g_pool):
           f"norm. distance = {dists[closest_pair]:.4f}")
     print(f"  Max distance: {max(dists.values()):.4f}")
 
-    for regime in ['Exc', 'Osc', 'Bi']:
+    for regime in ['Exc', 'Osc', 'HD']:
         key = (f'{regime}-WC', f'{regime}-SC')
         print(f"  {regime} WC vs SC: {dists[key]:.4f}")
 
@@ -524,10 +675,98 @@ def print_and_save_summary(conds, all_coords, g_pool):
         d = np.sqrt(np.diag(g_cond).clip(1e-15))
         corr_cond = g_cond / np.outer(d, d)
         corr_cond = np.clip(corr_cond, -1, 1)
+        eigvals = np.linalg.eigvalsh(g_cond)
+        cond_number = float(eigvals[-1] / eigvals[0]) if eigvals[0] > 1e-15 \
+            else float('inf')
+        ci_lo, ci_hi = bootstrap_covariance_ci(X)
         per_condition_metrics[cond['short']] = {
-            'covariance': [[round(float(v), 6) for v in row] for row in g_cond],
+            'covariance': [[float(f'{v:.4g}') for v in row] for row in g_cond],
             'correlation': [[round(float(v), 4) for v in row] for row in corr_cond],
+            'eigenvalues': [round(float(e), 8) for e in eigvals],
+            'condition_number': round(cond_number, 2),
+            'bootstrap_ci_lo': [[float(f'{v:.4g}') for v in row] for row in ci_lo],
+            'bootstrap_ci_hi': [[float(f'{v:.4g}') for v in row] for row in ci_hi],
         }
+
+    # --- A.7: Stationarity check (spatial-mean V, first half vs second half) ---
+    print(f"\n  STATIONARITY CHECK (spatial-mean V, first vs second half)")
+    print("  " + "-" * 50)
+    stationarity = {}
+    for ci, cond in enumerate(conds):
+        # average across replicates: use first replicate for speed
+        times, V_rec = all_recs[ci][0]
+        V_mean = V_rec.mean(axis=(1, 2))  # spatial mean per snapshot
+        n_half = len(V_mean) // 2
+        first_half = V_mean[:n_half]
+        second_half = V_mean[n_half:]
+        stationarity[cond['short']] = {
+            'first_half_mean': round(float(first_half.mean()), 6),
+            'first_half_std': round(float(first_half.std()), 6),
+            'second_half_mean': round(float(second_half.mean()), 6),
+            'second_half_std': round(float(second_half.std()), 6),
+        }
+        diff = abs(first_half.mean() - second_half.mean())
+        print(f"  {cond['short']:<12} "
+              f"1st: {first_half.mean():>8.4f} ± {first_half.std():.4f}  "
+              f"2nd: {second_half.mean():>8.4f} ± {second_half.std():.4f}  "
+              f"Δ={diff:.4f}")
+
+    # --- A.8: C_eff ground-truth validation ---
+    from scipy.stats import spearmanr
+    print(f"\n  C_EFF GROUND-TRUTH VALIDATION")
+    print("  " + "-" * 50)
+    true_C_vals = []
+    est_C_vals = []
+    ceff_tchar_corrs = {}
+    for ci, cond in enumerate(conds):
+        true_C = cond['C']
+        mean_Ceff = summary[cond['short']]['mean']['C_eff']
+        bias = true_C / mean_Ceff if mean_Ceff > 1e-12 else float('inf')
+        true_C_vals.append(true_C)
+        est_C_vals.append(mean_Ceff)
+        print(f"  {cond['short']:<12} true C={true_C:.4f}  "
+              f"C_eff={mean_Ceff:.6f}  bias={bias:.2f}x")
+        # Per-condition C_eff-T_char correlation
+        X = coords_to_array(all_coords[ci])
+        ct_corr = float(np.corrcoef(X[:, 3], X[:, 2])[0, 1])
+        ceff_tchar_corrs[cond['short']] = round(ct_corr, 4)
+
+    rho, p_val = spearmanr(true_C_vals, est_C_vals)
+    print(f"\n  Spearman rank correlation: ρ = {rho:.4f}, p = {p_val:.4e}")
+    print(f"\n  C_EFF–T_CHAR CORRELATION (structural confound check)")
+    print("  " + "-" * 50)
+    for name, corr in ceff_tchar_corrs.items():
+        print(f"  {name:<12} r(C_eff, T) = {corr:+.4f}")
+
+    ceff_validation = {
+        'true_C_vs_Ceff': {
+            cond['short']: {
+                'true_C': cond['C'],
+                'mean_Ceff': summary[cond['short']]['mean']['C_eff'],
+                'bias_factor': round(cond['C'] / max(
+                    summary[cond['short']]['mean']['C_eff'], 1e-12), 2),
+            } for cond in conds
+        },
+        'spearman_rho': round(float(rho), 4),
+        'spearman_p': float(p_val),
+        'ceff_tchar_correlations': ceff_tchar_corrs,
+    }
+
+    # --- A.11: Coupled-system regime diagnostic ---
+    print(f"\n  COUPLED-SYSTEM REGIME DIAGNOSTIC")
+    print("  " + "-" * 50)
+    print(f"  {'Condition':<12} {'V_mean amp':>12} {'spatial SD':>12}")
+    coupled_diagnostic = {}
+    for ci, cond in enumerate(conds):
+        times, V_rec = all_recs[ci][0]
+        V_spatial_mean = V_rec.mean(axis=(1, 2))
+        amp = float(V_spatial_mean.max() - V_spatial_mean.min())
+        spatial_sd = float(V_rec[-1].std())
+        coupled_diagnostic[cond['short']] = {
+            'spatial_mean_amplitude': round(amp, 6),
+            'final_snapshot_spatial_sd': round(spatial_sd, 6),
+        }
+        print(f"  {cond['short']:<12} {amp:>12.4f} {spatial_sd:>12.4f}")
 
     output = {
         'conditions': summary,
@@ -540,9 +779,12 @@ def print_and_save_summary(conds, all_coords, g_pool):
             'closest_distance': round(dists[closest_pair], 4),
             'within_regime_distances': {
                 regime: round(dists[(f'{regime}-WC', f'{regime}-SC')], 4)
-                for regime in ['Exc', 'Osc', 'Bi']
+                for regime in ['Exc', 'Osc', 'HD']
             },
         },
+        'stationarity': stationarity,
+        'ceff_validation': ceff_validation,
+        'coupled_diagnostic': coupled_diagnostic,
     }
     with open(OUT / 'numerical_results.json', 'w') as f:
         json.dump(output, f, indent=2)
@@ -557,7 +799,7 @@ def print_and_save_summary(conds, all_coords, g_pool):
 def api_demo():
     """
     Fetch electrophysiology data from Allen Brain Atlas Cell Types DB.
-    Maps neuronal features → morphospace coordinates to demonstrate
+    Maps neuronal features → state-space coordinates to demonstrate
     that the pipeline is data-source agnostic.
     """
     try:
@@ -611,26 +853,27 @@ def api_demo():
         print(f"  [API] Only {len(allen_coords)} usable records. Using fallback.")
         return _fallback_neuronal_demo()
 
-    print(f"  [API] Mapped {len(allen_coords)} neurons → morphospace.")
+    print(f"  [API] Mapped {len(allen_coords)} neurons → state space.")
 
     X = np.array([[c[k] for k in KEYS] for c in allen_coords])
     g_allen = np.cov(X.T, ddof=1)
 
     # Plot
+    ALLEN_LABELS = [r'$V_0$ (mV)', r'$A_{\delta V}$ (mV)', r'$T$ (ms)', r'$C_{\rm eff}$ (1/M$\Omega$)']
     fig, axes = plt.subplots(1, 3, figsize=(9.0, 3.2))
     pairs = [(0, 1), (0, 2), (2, 3)]
     for pi, (ix, iy) in enumerate(pairs):
         ax = axes[pi]
         ax.scatter(X[:, ix], X[:, iy], c='#2ca02c', s=40, alpha=0.7,
                   edgecolor='white', linewidth=0.3, zorder=3)
-        ax.set_xlabel(LABELS[ix]); ax.set_ylabel(LABELS[iy])
+        ax.set_xlabel(ALLEN_LABELS[ix]); ax.set_ylabel(ALLEN_LABELS[iy])
         ax.grid(True, alpha=0.15)
-    fig.suptitle(f'Allen Brain Atlas ephys → morphospace '
+    fig.suptitle(f'Allen Brain Atlas ephys → state space '
                  f'(n={len(allen_coords)} neurons)',
                  fontsize=10, y=1.06)
     fig.tight_layout()
-    save(fig, 'fig4_allen_api')
-    print("    Fig 4 (Allen API) ✓")
+    save(fig, 'fig6_allen_api')
+    print("    Fig 6 (Allen API) ✓")
 
     with open(OUT / 'allen_api_results.json', 'w') as f:
         json.dump({
@@ -682,7 +925,7 @@ def _fallback_neuronal_demo():
         ax.grid(True, alpha=0.15)
     fig.legend(loc='upper center', ncol=2, fontsize=7, framealpha=0.9,
               bbox_to_anchor=(0.5, 1.02))
-    fig.suptitle('Synthetic neuronal ephys → morphospace '
+    fig.suptitle('Synthetic neuronal ephys → state space '
                  '(pipeline generality)',
                  fontsize=10, y=1.08)
     fig.tight_layout()
@@ -700,16 +943,16 @@ def main():
     use_api = '--with-api' in sys.argv
 
     print("=" * 70)
-    print("  Information-Geometric Bioelectric Morphospace")
+    print("  Information-Geometric Bioelectric State Space")
     print("  Synthetic Demonstration — Publication Figures")
     print("=" * 70)
 
     set_style()
 
     print("\n[1] Simulating perturbation library "
-          f"(6 conditions × 15 replicates)...")
+          f"(6 conditions × 100 replicates)...")
     conds, all_coords, all_recs = run_perturbation_library(
-        n_replicates=15, seed_base=42)
+        n_replicates=100, seed_base=42)
 
     print("\n[2] Computing Fisher-Rao metrics...")
     # done inside fig3
@@ -718,9 +961,10 @@ def main():
     fig1_voltage_fields(conds, all_recs)
     fig2_morphospace(conds, all_coords)
     _, _, g_pool = fig3_fisher_rao(conds, all_coords)
-    fig5_summary(conds, all_coords)
+    fig_supp_phase_portraits()
+    fig_supp_time_series(conds, all_recs)
 
-    print_and_save_summary(conds, all_coords, g_pool)
+    print_and_save_summary(conds, all_coords, all_recs, g_pool)
 
     if use_api:
         print("\n[4] Allen Brain Atlas API demo...")
